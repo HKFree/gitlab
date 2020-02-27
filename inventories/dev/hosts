@@ -1,0 +1,14 @@
+[all]
+dev-vm ansible_host=192.168.122.77 ansible_user=root ansible_password=root
+
+[gitlab]
+dev-vm
+
+[runners_canary]
+dev-vm
+
+[runners_the_rest]
+
+[runners:children]
+runners_canary
+runners_the_rest

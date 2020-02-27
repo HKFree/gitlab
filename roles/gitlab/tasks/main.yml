@@ -1,0 +1,4 @@
+---
+
+- name: Pull image
+  debug: msg="secret1={{ secret1 }}"

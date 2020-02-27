@@ -1,0 +1,9 @@
+---
+
+- import_playbook: prepare.yml
+  vars:
+    prepare_hosts: gitlab
+
+- hosts: gitlab
+  roles:
+    - { role: gitlab }
