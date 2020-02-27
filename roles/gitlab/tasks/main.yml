@@ -1,4 +1,18 @@
 ---
 
 - name: Pull image
-  debug: msg="secret1={{ secret1 }}"
+  docker_image:
+    name: "{{ gitlab_image}}"
+    tag: "{{ gitlab_version }}"
+    source: pull
+
+- name: Configure systemd service
+  template:
+    src: gitlab.service.j2
+    dest: /etc/systemd/system/gitlab.service
+
+- name: Start systemd service
+  systemd:
+    name: gitlab
+    state: started
+    daemon_reload: true

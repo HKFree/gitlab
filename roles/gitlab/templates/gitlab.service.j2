@@ -1,0 +1,20 @@
+[Unit]
+Description=Gitlab Container
+After=docker.service
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+Restart=always
+ExecStartPre=-/usr/bin/docker rm -f %n
+ExecStart=/usr/bin/docker run --rm --name gitlab \
+    -h {{ gitlab_external_hostname }} \
+    -v {{ gitlab_data_path }}/config:/etc/gitlab \
+    -v {{ gitlab_data_path }}/logs:/var/log/gitlab \
+    -v {{ gitlab_data_path }}/data:/var/opt/gitlab \
+    -p 80:80 \
+    -p 222:22 \
+    {{ gitlab_image }}:{{ gitlab_version }}
+
+[Install]
+WantedBy=multi-user.target

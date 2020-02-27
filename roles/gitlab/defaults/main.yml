@@ -1,0 +1,5 @@
+gitlab_image: gitlab/gitlab-ce
+gitlab_version: latest
+
+gitlab_external_hostname: gitlab.example.com
+gitlab_data_path: /srv/gitlab

@@ -1,0 +1,25 @@
+---
+
+- name: Add Docker public key to apt keyring
+  apt_key:
+    id: "{{ docker_apt_key_id }}"
+    url: "{{ docker_apt_key_url }}"
+
+- name: Add Docker apt repository
+  apt_repository:
+    repo: "{{ docker_apt_repository }}"
+    update_cache: true
+
+- name: Install Docker
+  package:
+    name: docker-ce
+    state: present
+
+- name: Install pip
+  package:
+    name: python-pip
+    state: present
+
+- name: Install Docker SDK
+  pip:
+    name: docker
