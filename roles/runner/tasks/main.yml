@@ -1,0 +1,16 @@
+---
+
+- name: Add Gitlab Runner public key to apt keyring
+  apt_key:
+    id: "{{ runner_apt_key_id }}"
+    url: "{{ runner_apt_key_url }}"
+
+- name: Add Gitlab Runner apt repository
+  apt_repository:
+    repo: "{{ runner_apt_repository }}"
+    update_cache: true
+
+- name: Install Gitlab CI Multi Runner
+  package:
+    name: gitlab-ci-multi-runner
+    state: present
