@@ -9,7 +9,7 @@ stages:
 check:
   stage: test
   script:
-    - ansible-playbook -e ci=True --check --diff -i inventories/dev/hosts site.yml
+    - ansible-playbook -e ci=True -e gitlab_ci_token=dummy --check --diff -i inventories/dev/hosts site.yml
 
 play:
   stage: deploy
