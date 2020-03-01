@@ -1,4 +1,5 @@
 ---
 
 - name: reregister_runners
-  command: /usr/local/sbin/reregister-runners.sh
+  command: "/usr/local/sbin/reregister-runners.sh {{ gitlab_ci_token }}"
+  no_log: "{{ ci }}"

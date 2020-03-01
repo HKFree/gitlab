@@ -36,8 +36,9 @@
     cacheable: True
   failed_when: get_token_result.stdout is not match("C-[0-9a-zA-Z]{18}")
   when: gitlab_ci_token is not defined
+  no_log: "{{ ci }}"
 
-- name: Create registration script
+- name: Create re-registration script (and re-register runners if changed)
   template:
     src: reregister-runners.sh.j2
     dest: /usr/local/sbin/reregister-runners.sh

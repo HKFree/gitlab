@@ -2,7 +2,7 @@
 
 - name: Pull image
   docker_image:
-    name: "{{ gitlab_image}}"
+    name: "{{ gitlab_image }}"
     tag: "{{ gitlab_version }}"
     source: pull
 

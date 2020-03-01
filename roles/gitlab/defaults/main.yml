@@ -6,3 +6,5 @@ gitlab_external_schema: https
 gitlab_external_url: "{{ gitlab_external_schema }}://{{ gitlab_external_hostname }}"
 
 gitlab_data_path: /srv/gitlab
+
+ci: False

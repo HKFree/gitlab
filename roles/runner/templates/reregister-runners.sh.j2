@@ -1,6 +1,13 @@
 #!/bin/bash
 
-set -e
+# The first argument must be the CI token
+
+set -ex
+
+# Mark this script by g+x to ensure it will be "changed" during the next ansible run if it fails
+chmod g+x $0
+
+# token hash to force "changed" when token is updated (and allow safely using --diff on public): {{ gitlab_ci_token | hash('sha256') }}
 
 # Sadly, there is no simple idempotent way to reconfigure runners yet.
 # This approach breaks runner-project assignments.
@@ -11,7 +18,7 @@ gitlab-ci-multi-runner register \
     --non-interactive \
     --name "{{ ansible_host }}-docker" \
     --url "{{ gitlab_external_url }}" \
-    --registration-token "{{ gitlab_ci_token }}" \
+    --registration-token "$1" \
     --executor "docker" \
     --docker-image "debian:buster" \
     --tag-list "docker" \
@@ -19,3 +26,6 @@ gitlab-ci-multi-runner register \
     --locked "false" \
 
 sed -E 's/^(concurrent) = [0-9]+$/\1 = 4/g' -i /etc/gitlab-runner/config.toml
+
+# Remove the g+x mark
+chmod g-x $0
