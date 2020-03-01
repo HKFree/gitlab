@@ -1,0 +1,18 @@
+---
+
+image: pad92/ansible-alpine:2.8.6
+
+stages:
+  - test
+  - deploy
+
+check:
+  stage: test
+  script:
+    - ansible-playbook -e ci=True --check --diff -i inventories/dev/hosts site.yml
+
+play:
+  stage: deploy
+  when: manual
+  script:
+    - ansible-playbook -e ci=True --diff -i inventories/dev/hosts site.yml
