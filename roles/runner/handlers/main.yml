@@ -1,0 +1,4 @@
+---
+
+- name: reregister_runners
+  command: /usr/local/sbin/reregister-runners.sh

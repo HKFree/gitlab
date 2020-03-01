@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -e
+
+# Sadly, there is no simple idempotent way to reconfigure runners yet.
+# This approach breaks runner-project assignments.
+
+gitlab-ci-multi-runner unregister --all-runners
+
+gitlab-ci-multi-runner register \
+    --non-interactive \
+    --name "{{ ansible_host }}-docker" \
+    --url "{{ gitlab_external_url }}" \
+    --registration-token "{{ gitlab_ci_token }}" \
+    --executor "docker" \
+    --docker-image "debian:buster" \
+    --tag-list "docker" \
+    --run-untagged "true" \
+    --locked "false" \
+
+sed -E 's/^(concurrent) = [0-9]+$/\1 = 4/g' -i /etc/gitlab-runner/config.toml

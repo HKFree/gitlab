@@ -14,3 +14,33 @@
   package:
     name: gitlab-ci-multi-runner
     state: present
+
+- name: Wait for Gitlab public URL [{{ gitlab_external_url }}] to come up
+  uri:
+    url: "{{ gitlab_external_url }}"
+    method: GET
+  register: _result
+  until: _result.status == 200
+  delay: 10
+  retries: 60
+
+- name: Get gitlab-ci token
+  delegate_to: "{{ groups['gitlab'][0] }}"
+  command: "docker exec gitlab gitlab-rails runner -e production 'puts Gitlab::CurrentSettings.current_application_settings.runners_registration_token'"
+  register: get_token_result
+  when: gitlab_ci_token is not defined
+
+- name: Set gitlab_ci_token fact
+  set_fact:
+    gitlab_ci_token: "{{ get_token_result.stdout }}"
+    cacheable: True
+  failed_when: get_token_result.stdout is not match("C-[0-9a-zA-Z]{18}")
+  when: gitlab_ci_token is not defined
+
+- name: Create registration script
+  template:
+    src: reregister-runners.sh.j2
+    dest: /usr/local/sbin/reregister-runners.sh
+    mode: '0700'
+  notify:
+    - reregister_runners
