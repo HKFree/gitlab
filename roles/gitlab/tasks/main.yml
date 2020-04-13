@@ -6,6 +6,13 @@
     tag: "{{ gitlab_version }}"
     source: pull
 
+- name: Configure gitlab.rb
+  template:
+    src: gitlab.rb.j2
+    dest: "{{ gitlab_data_path }}/config/gitlab.rb"
+  notify:
+    - restart_gitlab
+
 - name: Configure systemd service
   template:
     src: gitlab.service.j2

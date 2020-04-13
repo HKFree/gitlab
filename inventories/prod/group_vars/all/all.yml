@@ -1,1 +1,4 @@
 ---
+
+gitlab_external_hostname: "{{ hostvars[groups['gitlab'][0]]['ansible_host'] }}"
+gitlab_external_schema: http
