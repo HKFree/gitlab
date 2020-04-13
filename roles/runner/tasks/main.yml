@@ -35,7 +35,7 @@
   set_fact:
     gitlab_ci_token: "{{ get_token_result.stdout }}"
     cacheable: True
-  failed_when: get_token_result.stdout is not match("C-[0-9a-zA-Z]{18}")
+  failed_when: get_token_result.stdout is not match("^[-0-9a-zA-Z]{20}$")
   when: gitlab_ci_token is not defined
   no_log: "{{ ci }}"
 
