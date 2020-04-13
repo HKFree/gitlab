@@ -6,6 +6,11 @@
     tag: "{{ gitlab_version }}"
     source: pull
 
+- name: Create config dir
+  file:
+    path: /srv/gitlab/config
+    state: directory
+
 - name: Configure gitlab.rb
   template:
     src: gitlab.rb.j2
@@ -13,10 +18,21 @@
   notify:
     - restart_gitlab
 
+- name: Place external https certificate
+  copy:
+    content: "{{ external_keypair }}"
+    dest: "{{ gitlab_data_path }}/config/external_keypair.pem"
+    mode: "0600"
+  notify:
+    - restart_gitlab
+  no_log: "{{ ci }}"
+
 - name: Configure systemd service
   template:
     src: gitlab.service.j2
     dest: /etc/systemd/system/gitlab.service
+  notify:
+    - restart_gitlab
 
 - name: Start systemd service
   systemd:

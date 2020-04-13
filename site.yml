@@ -8,6 +8,6 @@
   roles:
     - { role: gitlab }
 
-- hosts: runners_canary
+- hosts: runners
   roles:
     - { role: runner }
