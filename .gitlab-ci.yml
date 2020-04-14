@@ -1,18 +1,40 @@
 ---
 
-image: pad92/ansible-alpine:2.8.6
-
 stages:
+  - prepare
   - test
   - deploy
 
-check:
+.git-jobs:
+  image: alpine
+  before_script:
+    # todo: create a tooling image with all these
+    - apk add --no-cache openssh-client git gettext
+    - wget -O /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/3.2.1/yq_linux_amd64"
+    - chmod +x /usr/local/bin/yq
+    - eval $(ssh-agent -s)
+    - '[ -n "$SSH_PRIVATE_KEY" ] && echo "$SSH_PRIVATE_KEY" | ssh-add -'
+    - export GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+    - git config user.email "${GITLAB_USER_EMAIL}"
+    - git config user.name "${GITLAB_USER_NAME}"
+
+autoupgrade:
+  stage: prepare
+  extends: .git-jobs
+  only:
+    - schedules
+  script:
+    - tools/gitlab-config-automerger.sh
+
+.check:
   stage: test
+  image: pad92/ansible-alpine:2.8.6
   script:
     - ansible-playbook -e ci=True -e gitlab_ci_token=dummy --check --diff -i inventories/dev/hosts site.yml
 
 play:
   stage: deploy
+  image: pad92/ansible-alpine:2.8.6
   when: manual
   script:
     - ansible-playbook -e ci=True --diff -i inventories/dev/hosts site.yml
