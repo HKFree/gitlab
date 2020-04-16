@@ -18,6 +18,13 @@ stages:
     - git config user.email "${GITLAB_USER_EMAIL}"
     - git config user.name "${GITLAB_USER_NAME}"
 
+.ansible-jobs:
+  image: pad92/ansible-alpine:2.8.6
+  script:
+    - eval $(ssh-agent -s)
+    - '[ -n "$SSH_PRIVATE_KEY" ] && echo "$SSH_PRIVATE_KEY" | ssh-add -'
+    - export GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+
 autoupgrade:
   stage: prepare
   extends: .git-jobs
@@ -26,15 +33,30 @@ autoupgrade:
   script:
     - tools/gitlab-config-automerger.sh
 
-.check:
+check test:
   stage: test
-  image: pad92/ansible-alpine:2.8.6
+  extends: .ansible-jobs
+  only:
+    refs:
+      - master
+      - test
   script:
-    - ansible-playbook -e ci=True -e gitlab_ci_token=dummy --check --diff -i inventories/dev/hosts site.yml
+    - ansible-playbook -e ci=True -e gitlab_ci_token=dummy --check --diff -i inventories/test/hosts site.yml
 
-play:
+deploy test:
   stage: deploy
-  image: pad92/ansible-alpine:2.8.6
+  extends: .ansible-jobs
+  only:
+    refs:
+      - master
+      - test
+  script:
+    - ansible-playbook -e ci=True --check --diff -i inventories/test/hosts site.yml
+
+
+.play:
+  stage: deploy
+  extends: .ansible-jobs
   when: manual
   script:
     - ansible-playbook -e ci=True --diff -i inventories/dev/hosts site.yml

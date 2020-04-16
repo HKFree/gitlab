@@ -1,0 +1,15 @@
+[all]
+gitlab1 ansible_host=10.107.252.92 ansible_port=3022 ansible_user=root
+
+[gitlab]
+gitlab1
+
+[runners_canary]
+gitlab1
+
+[runners_the_rest]
+gitlab1
+
+[runners:children]
+runners_canary
+runners_the_rest
