@@ -27,6 +27,13 @@ CUR_VERSION=$(yq r roles/gitlab/defaults/main.yml gitlab_version | tr - +)
 # this var is overridable for testing purposes
 NEXT_VERSION=${NEXT_VERSION:-$(cd omnibus && git tag | sort -V | egrep '^[0-9]+\.[0-9]+\.[0-9]+\+ce\.[0-9]+$' | tail -1)}
 
+if [ "$CUR_VERSION" == "$NEXT_VERSION" ]; then
+    echo
+    echo "We are at the newest version, good!"
+    echo
+    exit 0
+fi
+
 # todo: use checked out omnubus repo as we've already cloned it
 wget -O current_gitlab.rb.template $(echo $SOURCE_URL_TEMPLATE | REF=$CUR_VERSION envsubst)
 wget -O next_gitlab.rb.template $(echo $SOURCE_URL_TEMPLATE | REF=$NEXT_VERSION envsubst)
@@ -34,31 +41,43 @@ wget -O next_gitlab.rb.template $(echo $SOURCE_URL_TEMPLATE | REF=$NEXT_VERSION 
 diff -u current_gitlab.rb.template next_gitlab.rb.template > patch || EC=$?
 
 if [ -z "$EC" ]; then
-    set +x
+    echo
     echo "No change in the config file"
+    echo
 elif [ $EC -eq 1 ]; then
+    echo
+    echo "Patching the config file with following changes:"
+    echo
+
     cat ./patch
 
-    # patch the config file
+    echo
+
     patch -u $CONFIG_PATH -i ./patch
+else
+    echo
+    echo "Failed to compare config file versions!"
+    echo
+fi
 
-    # set new version in ansible gitlab role
-    yq w -i roles/gitlab/defaults/main.yml gitlab_version $NEXT_VERSION
+echo
+echo "Setting the new version in ansible gitlab role"
+echo
 
-    # force-push the cloned repo as a new autoupgraded branch
-    git remote remove rw || echo "No remote to delete"
-    git remote add rw git@${CI_SERVER_HOST}:${CI_PROJECT_PATH}.git
-    git branch -D ${TARGET_BRANCH} || echo "No branch to delete"
-    git checkout -b ${TARGET_BRANCH}
-    git commit -m "automerge config changes from ${NEXT_VERSION}" $CONFIG_PATH
-    if [ "$NO_PUSH" != "1" ]; then
-        git push rw ${TARGET_BRANCH} -f
-    else
-        set +x
-        echo "Not pushing (not on protected brench?)"
-    fi
+yq w -i roles/gitlab/defaults/main.yml gitlab_version $NEXT_VERSION
+
+echo
+echo "force-pushing the updated playbook as ${TARGET_BRANCH}"
+echo
+
+git remote remove rw || echo "No remote to delete"
+git remote add rw git@${CI_SERVER_HOST}:${CI_PROJECT_PATH}.git
+git branch -D ${TARGET_BRANCH} || echo "No branch to delete"
+git checkout -b ${TARGET_BRANCH}
+git commit -m "automerge new GL version and config changes from ${NEXT_VERSION}" $CONFIG_PATH
+if [ "$NO_PUSH" != "1" ]; then
+    git push rw ${TARGET_BRANCH} -f
 else
     set +x
-    echo "Failed to compare config file versions!"
-    exit $EC
+    echo "Not pushing (not on protected brench?)"
 fi
