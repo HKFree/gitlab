@@ -1,7 +1,7 @@
 #!/bin/sh
 
 set -e
-[ -z $DEBUG ] && set -x
+[ -n $DEBUG ] && set -x
 
 SOURCE_URL_TEMPLATE='https://gitlab.com/gitlab-org/omnibus-gitlab/raw/${REF}/files/gitlab-config-template/gitlab.rb.template'
 OMNIBUS_GITLAB_REPO='https://gitlab.com/gitlab-org/omnibus-gitlab'
