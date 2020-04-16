@@ -20,7 +20,7 @@ stages:
 
 .ansible-jobs:
   image: pad92/ansible-alpine:2.8.6
-  script:
+  before_script:
     - eval $(ssh-agent -s)
     - '[ -n "$SSH_PRIVATE_KEY" ] && echo "$SSH_PRIVATE_KEY" | ssh-add -'
     - export ANSIBLE_HOST_KEY_CHECKING=False
