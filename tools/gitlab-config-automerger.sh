@@ -7,6 +7,7 @@ SOURCE_URL_TEMPLATE='https://gitlab.com/gitlab-org/omnibus-gitlab/raw/${REF}/fil
 OMNIBUS_GITLAB_REPO='https://gitlab.com/gitlab-org/omnibus-gitlab'
 TARGET_BRANCH=${TARGET_BRANCH:-next-auto}
 CONFIG_PATH=roles/gitlab/templates/gitlab.rb.j2
+ROLE_DEFAULTS_PATH=roles/gitlab/defaults/main.yml
 
 if [ -z "$CI_BUILD_ID" ]; then
     # local testing values
@@ -23,7 +24,7 @@ fi
 rm -rf omnibus
 git clone --bare $OMNIBUS_GITLAB_REPO omnibus
 
-CUR_VERSION=$(yq r roles/gitlab/defaults/main.yml gitlab_version | tr - +)
+CUR_VERSION=$(yq r $ROLE_DEFAULTS_PATH gitlab_version | tr - +)
 
 # this var is overridable for testing purposes
 NEXT_VERSION=${NEXT_VERSION:-$(cd omnibus && git tag | sort -V | egrep '^[0-9]+\.[0-9]+\.[0-9]+\+ce\.[0-9]+$' | tail -1)}
@@ -65,7 +66,7 @@ echo
 echo "Setting the new version in ansible gitlab role"
 echo
 
-yq w -i roles/gitlab/defaults/main.yml gitlab_version $NEXT_VERSION
+yq w -i $ROLE_DEFAULTS_PATH gitlab_version $(echo $NEXT_VERSION | tr + -)
 
 echo
 echo "force-pushing the updated playbook as ${TARGET_BRANCH}"
@@ -75,7 +76,7 @@ git remote remove rw || echo "No remote to delete"
 git remote add rw git@${CI_SERVER_HOST}:${CI_PROJECT_PATH}.git
 git branch -D ${TARGET_BRANCH} || echo "No branch to delete"
 git checkout -b ${TARGET_BRANCH}
-git commit -m "automerge new GL version and config changes from ${NEXT_VERSION}" $CONFIG_PATH
+git commit -m "automerge new GL version and config changes from ${NEXT_VERSION}" $CONFIG_PATH $ROLE_DEFAULTS_PATH
 if [ "$NO_PUSH" != "1" ]; then
     git push rw ${TARGET_BRANCH} -f
 else
