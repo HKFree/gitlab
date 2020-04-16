@@ -1,6 +1,7 @@
 #!/bin/sh
 
-set -ex
+set -e
+[ -z $DEBUG ] && set -x
 
 SOURCE_URL_TEMPLATE='https://gitlab.com/gitlab-org/omnibus-gitlab/raw/${REF}/files/gitlab-config-template/gitlab.rb.template'
 OMNIBUS_GITLAB_REPO='https://gitlab.com/gitlab-org/omnibus-gitlab'
@@ -78,6 +79,5 @@ git commit -m "automerge new GL version and config changes from ${NEXT_VERSION}"
 if [ "$NO_PUSH" != "1" ]; then
     git push rw ${TARGET_BRANCH} -f
 else
-    set +x
     echo "Not pushing (not on protected brench?)"
 fi
