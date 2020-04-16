@@ -23,7 +23,7 @@ stages:
   script:
     - eval $(ssh-agent -s)
     - '[ -n "$SSH_PRIVATE_KEY" ] && echo "$SSH_PRIVATE_KEY" | ssh-add -'
-    - export GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+    - export ANSIBLE_HOST_KEY_CHECKING=False
 
 autoupgrade:
   stage: prepare
