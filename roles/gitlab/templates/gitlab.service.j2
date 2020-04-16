@@ -14,7 +14,7 @@ ExecStart=/usr/bin/docker run --rm --name gitlab \
     -v {{ gitlab_data_path }}/data:/var/opt/gitlab \
     -p 80:80 \
     -p 443:443 \
-    -p 222:22 \
+    -p {{ gitlab_ssh_port }}:22 \
     {{ gitlab_image }}:{{ gitlab_version }}
 
 [Install]

@@ -328,53 +328,32 @@ external_url '{{ gitlab_external_url }}'
 ###! **Be careful not to break the indentation in the ldap_servers block. It is
 ###!   in yaml format and the spaces must be retained. Using tabs will not work.**
 
-# gitlab_rails['ldap_enabled'] = false
-# gitlab_rails['prevent_ldap_sign_in'] = false
+gitlab_rails['ldap_enabled'] = true
+gitlab_rails['prevent_ldap_sign_in'] = false
+gitlab_rails['ldap_servers'] = YAML.load <<-'EOS'
+  main:
+    label: 'HKfree.org LDAP'
+    host: 'ldap.hkfree.org'
+    port: 636
+    encryption: 'simple_tls'
+    bind_dn: "{{ gitlab_ldap_bind_dn }}"
+    password: "{{ gitlab_ldap_password }}"
+    base: 'ou=people,dc=hkfree,dc=org'
+    uid: 'uid'
+    allow_username_or_email_login: true
+    lowercase_usernames: true
+    attributes:
+      email: mail
+      username:
+        - displayName
+        - uid
+      name:
+        - displayName
+        - uid
+EOS
 
-###! **remember to close this block with 'EOS' below**
-# gitlab_rails['ldap_servers'] = YAML.load <<-'EOS'
-#   main: # 'main' is the GitLab 'provider ID' of this LDAP server
-#     label: 'LDAP'
-#     host: '_your_ldap_server'
-#     port: 389
-#     uid: 'sAMAccountName'
-#     bind_dn: '_the_full_dn_of_the_user_you_will_bind_with'
-#     password: '_the_password_of_the_bind_user'
-#     encryption: 'plain' # "start_tls" or "simple_tls" or "plain"
-#     verify_certificates: true
-#     smartcard_auth: false
-#     active_directory: true
-#     allow_username_or_email_login: false
-#     lowercase_usernames: false
-#     block_auto_created_users: false
-#     base: ''
-#     user_filter: ''
-#     ## EE only
-#     group_base: ''
-#     admin_group: ''
-#     sync_ssh_keys: false
-#
-#   secondary: # 'secondary' is the GitLab 'provider ID' of second LDAP server
-#     label: 'LDAP'
-#     host: '_your_ldap_server'
-#     port: 389
-#     uid: 'sAMAccountName'
-#     bind_dn: '_the_full_dn_of_the_user_you_will_bind_with'
-#     password: '_the_password_of_the_bind_user'
-#     encryption: 'plain' # "start_tls" or "simple_tls" or "plain"
-#     verify_certificates: true
-#     smartcard_auth: false
-#     active_directory: true
-#     allow_username_or_email_login: false
-#     lowercase_usernames: false
-#     block_auto_created_users: false
-#     base: ''
-#     user_filter: ''
-#     ## EE only
-#     group_base: ''
-#     admin_group: ''
-#     sync_ssh_keys: false
-# EOS
+# NOTE: Original LDAP config examples are deleted so we will be informed when there is any change in them in the upstream
+# config, during the autoupgrade patch process
 
 ### Smartcard authentication settings
 ###! Docs: https://docs.gitlab.com/ee/administration/auth/smartcard.html
