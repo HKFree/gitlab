@@ -1,5 +1,5 @@
 gitlab_image: gitlab/gitlab-ce
-gitlab_version: 12.10.6-ce.0
+gitlab_version: 14.2.4+ce.0
 gitlab_external_hostname: gitlab.example.com
 gitlab_external_schema: https
 gitlab_external_url: "{{ gitlab_external_schema }}://{{ gitlab_external_hostname }}"
