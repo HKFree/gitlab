@@ -29,7 +29,7 @@ CUR_VERSION=$(yq r $ROLE_DEFAULTS_PATH gitlab_version | tr - +)
 # this var is overridable for testing purposes
 NEXT_VERSION=${NEXT_VERSION:-$(cd omnibus && git tag | sort -V | egrep '^[0-9]+\.[0-9]+\.[0-9]+\+ce\.[0-9]+$' | tail -1)}
 
-if [ "$CUR_VERSION" == "$NEXT_VERSION" ]; then
+if [ "$CUR_VERSION" = "$NEXT_VERSION" ]; then
     echo
     echo "We are at the newest version, good!"
     echo
