@@ -178,6 +178,7 @@ external_url '{{ gitlab_external_url }}'
 # gitlab_rails['namespaces_in_product_marketing_emails_worker_cron'] = "0 9 * * *"
 # gitlab_rails['ssh_keys_expired_notification_worker_cron'] = "0 2 * * *"
 # gitlab_rails['ssh_keys_expiring_soon_notification_worker_cron'] = "0 1 * * *"
+# gitlab_rails['loose_foreign_keys_cleanup_worker_cron'] = "*/5 * * * *"
 
 ### Webhook Settings
 ###! Number of seconds to wait for HTTP response after sending webhook HTTP POST
@@ -313,6 +314,7 @@ external_url '{{ gitlab_external_url }}'
 # gitlab_rails['object_store']['objects']['packages']['bucket'] = nil
 # gitlab_rails['object_store']['objects']['dependency_proxy']['bucket'] = nil
 # gitlab_rails['object_store']['objects']['terraform_state']['bucket'] = nil
+# gitlab_rails['object_store']['objects']['ci_secure_files']['bucket'] = nil
 
 ### Job Artifacts
 # gitlab_rails['artifacts_enabled'] = true
@@ -406,6 +408,23 @@ external_url '{{ gitlab_external_url }}'
 # gitlab_rails['terraform_state_object_store_enabled'] = false
 # gitlab_rails['terraform_state_object_store_remote_directory'] = "terraform"
 # gitlab_rails['terraform_state_object_store_connection'] = {
+#   'provider' => 'AWS',
+#   'region' => 'eu-west-1',
+#   'aws_access_key_id' => 'AWS_ACCESS_KEY_ID',
+#   'aws_secret_access_key' => 'AWS_SECRET_ACCESS_KEY',
+#   # # The below options configure an S3 compatible host instead of AWS
+#   # 'host' => 's3.amazonaws.com',
+#   # 'aws_signature_version' => 4, # For creation of signed URLs. Set to 2 if provider does not support v4.
+#   # 'endpoint' => 'https://s3.amazonaws.com', # default: nil - Useful for S3 compliant services such as DigitalOcean Spaces
+#   # 'path_style' => false # Use 'host/bucket_name/object' instead of 'bucket_name.host/object'
+# }
+
+### CI Secure Files
+# gitlab_rails['ci_secure_files_enabled'] = true
+# gitlab_rails['ci_secure_files_storage_path'] = "/var/opt/gitlab/gitlab-rails/shared/ci_secure_files"
+# gitlab_rails['ci_secure_files_object_store_enabled'] = false
+# gitlab_rails['ci_secure_files_object_store_remote_directory'] = "ci-secure-files"
+# gitlab_rails['ci_secure_files_object_store_connection'] = {
 #   'provider' => 'AWS',
 #   'region' => 'eu-west-1',
 #   'aws_access_key_id' => 'AWS_ACCESS_KEY_ID',
@@ -511,6 +530,8 @@ EOS
 #     "args" => { "access_type" => "offline", "approval_prompt" => "" }
 #   }
 # ]
+# gitlab_rails['omniauth_cas3_session_duration'] = 28800
+# gitlab_rails['omniauth_saml_message_max_byte_size'] = 250000
 
 ### FortiAuthenticator authentication settings
 # gitlab_rails['forti_authenticator_enabled'] = false
@@ -557,6 +578,12 @@ EOS
 ###! Setting this value will enable Server-Side Encryption with customer provided keys;
 ###!   otherwise S3-managed keys are used.
 # gitlab_rails['backup_encryption_key'] = '<base64-encoded encryption key>'
+
+###! **Turns on AWS Server-Side Encryption with Amazon SSE-KMS (AWS managed but customer-master key)
+# gitlab_rails['backup_upload_storage_options'] = {
+#  'server_side_encryption' => 'aws:kms',
+#  'server_side_encryption_kms_key_id' => 'arn:aws:kms:YOUR-KEY-ID-HERE'
+# }
 
 ###! **Specifies Amazon S3 storage class to use for backups. Valid values
 ###!   include 'STANDARD', 'STANDARD_IA', and 'REDUCED_REDUNDANCY'**
@@ -611,6 +638,8 @@ EOS
 ### Extra customization
 # gitlab_rails['extra_google_analytics_id'] = '_your_tracking_id'
 # gitlab_rails['extra_google_tag_manager_id'] = '_your_tracking_id'
+# gitlab_rails['extra_one_trust_id'] = '_your_one_trust_id'
+# gitlab_rails['extra_google_tag_manager_nonce_id'] = '_your_google_tag_manager_id'
 # gitlab_rails['extra_matomo_url'] = '_your_matomo_url'
 # gitlab_rails['extra_matomo_site_id'] = '_your_matomo_site_id'
 # gitlab_rails['extra_matomo_disable_cookies'] = false
@@ -722,6 +751,10 @@ EOS
 # gitlab_rails['redis_trace_chunks_sentinels'] = nil
 # gitlab_rails['redis_actioncable_instance'] = nil
 # gitlab_rails['redis_actioncable_sentinels'] = nil
+# gitlab_rails['redis_rate_limiting_instance'] = nil
+# gitlab_rails['redis_rate_limiting_sentinels'] = nil
+# gitlab_rails['redis_sessions_instance'] = nil
+# gitlab_rails['redis_sessions_sentinels'] = nil
 
 ################################################################################
 ## Container Registry settings
@@ -765,6 +798,7 @@ EOS
 # registry['log_formatter'] = "text"
 # registry['rootcertbundle'] = "/var/opt/gitlab/registry/certificate.crt"
 # registry['health_storagedriver_enabled'] = true
+# registry['middleware'] = nil
 # registry['storage_delete_enabled'] = true
 # registry['validation_enabled'] = false
 # registry['autoredirect'] = false
@@ -901,6 +935,11 @@ EOS
 ##! Maximum file size in bytes for an image to be considered eligible for rescaling
 # gitlab_workhorse['image_scaler_max_filesize'] = 250000
 
+##! Service name used to register GitLab Workhorse as a Consul service
+# gitlab_workhorse['consul_service_name'] = 'workhorse'
+##! Semantic metadata used when registering GitLab Workhorse as a Consul service
+# gitlab_workhorse['consul_service_meta'] = {}
+
 ################################################################################
 ## GitLab User Settings
 ##! Modify default git user.
@@ -954,6 +993,11 @@ EOS
 # puma['exporter_address'] = "127.0.0.1"
 # puma['exporter_port'] = 8083
 
+##! Service name used to register Puma as a Consul service
+# puma['consul_service_name'] = 'rails'
+##! Semantic metadata used when registering Puma as a Consul service
+# puma['consul_service_meta'] = {}
+
 ################################################################################
 ## GitLab Sidekiq
 ################################################################################
@@ -988,10 +1032,23 @@ EOS
 
 # sidekiq['negate'] = false
 
+##! Specifies where Prometheus metrics endpoints should be made available for Sidekiq processes.
 # sidekiq['metrics_enabled'] = true
 # sidekiq['exporter_log_enabled'] = false
 # sidekiq['listen_address'] = "localhost"
 # sidekiq['listen_port'] = 8082
+
+##! Specifies where health-check endpoints should be made available for Sidekiq processes.
+##! Defaults to the same settings as for Prometheus metrics (see above).
+# sidekiq['health_checks_enabled'] = true
+# sidekiq['health_checks_log_enabled'] = false
+# sidekiq['health_checks_listen_address'] = "localhost"
+# sidekiq['health_checks_listen_port'] = 8082
+
+##! Service name used to register Sidekiq as a Consul service
+# sidekiq['consul_service_name'] = 'sidekiq'
+##! Semantic metadata used when registering Sidekiq as a Consul service
+# sidekiq['consul_service_meta'] = {}
 
 ################################################################################
 ## gitlab-shell
@@ -1002,7 +1059,6 @@ EOS
 # gitlab_shell['log_format'] = 'json'
 # gitlab_shell['http_settings'] = { user: 'username', password: 'password', ca_file: '/etc/ssl/cert.pem', ca_path: '/etc/pki/tls/certs', self_signed_cert: false}
 # gitlab_shell['log_directory'] = "/var/log/gitlab/gitlab-shell/"
-# gitlab_shell['custom_hooks_dir'] = "/opt/gitlab/embedded/service/gitlab-shell/hooks"
 
 # gitlab_shell['auth_file'] = "/var/opt/gitlab/.ssh/authorized_keys"
 
@@ -1050,6 +1106,8 @@ EOS
 # postgresql['log_truncate_on_rotation'] = nil
 # postgresql['log_rotation_age'] = nil
 # postgresql['log_rotation_size'] = nil
+##! 'username' affects the system and PostgreSQL user accounts created during installation and cannot be changed
+##! on an existing installation. See https://gitlab.com/gitlab-org/omnibus-gitlab/-/issues/3606 for more details.
 # postgresql['username'] = "gitlab-psql"
 # postgresql['group'] = "gitlab-psql"
 ##! `SQL_USER_PASSWORD_HASH` can be generated using the command `gitlab-ctl pg-password-md5 gitlab`
@@ -1186,11 +1244,33 @@ EOS
 # redis['maxmemory'] = "0"
 # redis['maxmemory_policy'] = "noeviction"
 # redis['maxmemory_samples'] = "5"
+# redis['stop_writes_on_bgsave_error'] = true
 # redis['tcp_backlog'] = 511
 # redis['tcp_timeout'] = "60"
 # redis['tcp_keepalive'] = "300"
 # redis['uid'] = nil
 # redis['gid'] = nil
+
+### Redis TLS settings
+###! To run Redis over TLS, specify values for the following settings
+# redis['tls_port'] = nil
+# redis['tls_cert_file'] = nil
+# redis['tls_key_file'] = nil
+
+###! Other TLS related optional settings
+# redis['tls_dh_params_file'] = nil
+# redis['tls_ca_cert_dir'] = '/opt/gitlab/embedded/ssl/certs/'
+# redis['tls_ca_cert_file'] = '/opt/gitlab/embedded/ssl/certs/cacert.pem'
+# redis['tls_auth_clients'] = 'optional'
+# redis['tls_replication'] = nil
+# redis['tls_cluster'] = nil
+# redis['tls_protocols'] = nil
+# redis['tls_ciphers'] = nil
+# redis['tls_ciphersuites'] = nil
+# redis['tls_prefer_server_ciphers'] = nil
+# redis['tls_session_caching'] = nil
+# redis['tls_session_cache_size'] = nil
+# redis['tls_session_cache_timeout'] = nil
 
 ### Disable or obfuscate unnecessary redis command names
 ### Uncomment and edit this block to add or remove entries.
@@ -1337,6 +1417,10 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 ##! Docs: https://docs.gitlab.com/omnibus/settings/nginx.html#supporting-proxied-ssl
 # nginx['listen_https'] = nil
 
+##! **Override only if you use a reverse proxy with proxy protocol enabled**
+##! Docs: https://docs.gitlab.com/omnibus/settings/nginx.html#configuring-proxy-protocol
+# nginx['proxy_protocol'] = false
+
 # nginx['custom_gitlab_server_config'] = "location ^~ /foo-namespace/bar-project/raw/ {\n deny all;\n}\n"
 # nginx['custom_nginx_config'] = "include /etc/nginx/conf.d/example.conf;"
 # nginx['proxy_read_timeout'] = 3600
@@ -1400,6 +1484,11 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 #    "deny" => "all" # Deny access to anyone else
 #  }
 # }
+
+##! Service name used to register Nginx as a Consul service
+# nginx['consul_service_name'] = 'nginx'
+##! Semantic metadata used when registering NGINX as a Consul service
+# nginx['consul_service_meta'] = {}
 
 ################################################################################
 ## GitLab Logging
@@ -1522,6 +1611,10 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 ##! Default to 0 for unlimited connections.
 # gitlab_pages['max_connections'] = 0
 
+##! Configure the maximum length of URIs accepted by GitLab Pages
+##! By default is limited for security reasons. Set 0 for unlimited
+# gitlab_pages['max_uri_length'] = 1024
+
 ##! Setting the propagate_correlation_id to true allows installations behind a reverse proxy
 ##! generate and set a correlation ID to requests sent to GitLab Pages. If a reverse proxy
 ##! sets the header value X-Request-ID, the value will be propagated in the request chain.
@@ -1550,10 +1643,6 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 # gitlab_pages['artifacts_server_url'] = nil # Defaults to external_url + '/api/v4'
 # gitlab_pages['artifacts_server_timeout'] = 10
 
-##! Environments that do not support bind-mounting should set this parameter to
-##! true. This is incompatible with the artifacts server
-# gitlab_pages['inplace_chroot'] = false
-
 ##! Prometheus metrics for Pages docs: https://gitlab.com/gitlab-org/gitlab-pages/#enable-prometheus-metrics
 # gitlab_pages['metrics_address'] = ":9235"
 
@@ -1578,12 +1667,6 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 
 ##! GitLab API JWT Token expiry time
 # gitlab_pages['gitlab_client_jwt_expiry'] = "30s"
-
-##! Fallback to legacy storage
-##! Warning: support for this flag will be removed in %14.3
-##! If you need to use it, please comment on https://gitlab.com/gitlab-org/gitlab/-/issues/331699
-##! and describe why
-# gitlab_pages['use_legacy_storage'] = nil
 
 ##! Advanced settings for API-based configuration for GitLab Pages.
 ##! The recommended default values are set inside GitLab Pages.
@@ -1624,6 +1707,20 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 ##! Enable serving content from disk instead of Object Storage
 # gitlab_pages['enable_disk'] = nil
 
+##! Rate-limiting options below work in report-only mode:
+##! they only count rejected requests, but don't reject them
+##! enable `FF_ENABLE_RATE_LIMITER=true` environment variable to
+##! reject requests.
+
+##! Rate limit per source IP in number of requests per second, 0 means is disabled
+# gitlab_pages['rate_limit_source_ip'] = 50.0
+##! Rate limit per source IP maximum burst allowed per second
+# gitlab_pages['rate_limit_source_ip_burst'] = 600
+##! Rate limit per domain name in number of requests per second, 0 means is disabled
+# gitlab_pages['rate_limit_domain'] = 0
+##! Rate limit per domain name maximum burst allowed per second
+# gitlab_pages['rate_limit_domain_burst'] = 10000
+
 # gitlab_pages['env_directory'] = "/opt/gitlab/etc/gitlab-pages/env"
 # gitlab_pages['env'] = {
 #   'SSL_CERT_DIR' => "#{node['package']['install-dir']}/embedded/ssl/certs/"
@@ -1660,8 +1757,9 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 
 ##! Settings used by the GitLab application
 # gitlab_rails['gitlab_kas_enabled'] = true
-# gitlab_rails['gitlab_kas_external_url'] = ws://gitlab.example.com/-/kubernetes-agent
+# gitlab_rails['gitlab_kas_external_url'] = ws://gitlab.example.com/-/kubernetes-agent/
 # gitlab_rails['gitlab_kas_internal_url'] = grpc://localhost:8153
+# gitlab_rails['gitlab_kas_external_k8s_proxy_url'] = https://gitlab.example.com/-/kubernetes-agent/
 
 ##! Enable GitLab KAS
 # gitlab_kas['enable'] = true
@@ -1677,15 +1775,40 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 ##! Shared secret used for authentication between KAS and GitLab
 # gitlab_kas['api_secret_key'] = nil # Will be generated if not set. Base64 encoded and exactly 32 bytes long.
 
+##! Shared secret used for authentication between different KAS instances in a multi-node setup
+# gitlab_kas['private_api_secret_key'] = nil # Will be generated if not set. Base64 encoded and exactly 32 bytes long.
+
 ##! Listen configuration for GitLab KAS
 # gitlab_kas['listen_address'] = 'localhost:8150'
 # gitlab_kas['listen_network'] = 'tcp'
 # gitlab_kas['listen_websocket'] = true
+# gitlab_kas['certificate_file'] = "/path/to/certificate.pem"
+# gitlab_kas['key_file'] = "/path/to/key.pem"
 # gitlab_kas['internal_api_listen_network'] = 'tcp'
 # gitlab_kas['internal_api_listen_address'] = 'localhost:8153'
+# gitlab_kas['internal_api_certificate_file'] = "/path/to/certificate.pem"
+# gitlab_kas['internal_api_key_file'] = "/path/to/key.pem"
+# gitlab_kas['kubernetes_api_listen_address'] = 'localhost:8154'
+# gitlab_kas['kubernetes_api_certificate_file'] = "/path/to/certificate.pem"
+# gitlab_kas['kubernetes_api_key_file'] = "/path/to/key.pem"
+# gitlab_kas['private_api_listen_network'] = 'tcp'
+# gitlab_kas['private_api_listen_address'] = 'localhost:8155'
+# gitlab_kas['private_api_certificate_file'] = "/path/to/certificate.pem"
+# gitlab_kas['private_api_key_file'] = "/path/to/key.pem"
 
 ##! Metrics configuration for GitLab KAS
 # gitlab_kas['metrics_usage_reporting_period'] = 60
+
+##! Environment variables for GitLab KAS
+# gitlab_kas['env'] = {
+#   'SSL_CERT_DIR' => "/opt/gitlab/embedded/ssl/certs/",
+#   # In a multi-node setup, this address MUST be reachable from other KAS instances. In a single-node setup, it can be on localhost for simplicity
+#   'OWN_PRIVATE_API_URL' => 'grpc://localhost:8155'
+# }
+
+##! Error Reporting and Logging with Sentry
+# gitlab_kas['sentry_dsn'] = 'https://<key>@sentry.io/<project>'
+# gitlab_kas['sentry_environment'] = 'production'
 
 ##! Directories for GitLab KAS
 # gitlab_kas['dir'] = '/var/opt/gitlab/gitlab-kas'
@@ -1856,6 +1979,11 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 # prometheus['listen_address'] = 'localhost:9090'
 #
 
+##! Service name used to register Prometheus as a Consul service
+# prometheus['consul_service_name'] = 'prometheus'
+##! Semantic metadata used when registering Prometheus as a Consul service
+# prometheus['consul_service_meta'] = {}
+
 ################################################################################
 ###! **Only needed if Prometheus and Rails are not on the same server.**
 ### For example, in a multi-node architecture, Prometheus will be installed on the monitoring node, while Rails will be on the Rails node.
@@ -1905,6 +2033,11 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 ##! Advanced settings. Should be changed only if absolutely needed.
 # node_exporter['listen_address'] = 'localhost:9100'
 
+##! Service name used to register Node Exporter as a Consul service
+# node_exporter['consul_service_name'] = 'node-exporter'
+##! Semantic metadata used when registering Node Exporter as a Consul service
+# node_exporter['consul_service_meta'] = {}
+
 ################################################################################
 ## Prometheus Redis exporter
 ##! Docs: https://docs.gitlab.com/ee/administration/monitoring/prometheus/redis_exporter.html
@@ -1923,6 +2056,11 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 ##! Advanced settings. Should be changed only if absolutely needed.
 # redis_exporter['listen_address'] = 'localhost:9121'
 
+##! Service name used to register Redis Exporter as a Consul service
+# redis_exporter['consul_service_name'] = 'redis-exporter'
+##! Semantic metadata used when registering Redis Exporter as a Consul service
+# redis_exporter['consul_service_meta'] = {}
+
 ################################################################################
 ## Prometheus Postgres exporter
 ##! Docs: https://docs.gitlab.com/ee/administration/monitoring/prometheus/postgres_exporter.html
@@ -1939,6 +2077,11 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 # }
 # postgres_exporter['sslmode'] = nil
 # postgres_exporter['per_table_stats'] = false
+
+##! Service name used to register Postgres Exporter as a Consul service
+# postgres_exporter['consul_service_name'] = 'postgres-exporter'
+##! Semantic metadata used when registering Postgres Exporter as a Consul service
+# postgres_exporter['consul_service_meta'] = {}
 
 ################################################################################
 ## Prometheus PgBouncer exporter (EE only)
@@ -1971,6 +2114,10 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 ##! Manage gitlab-exporter sidekiq probes. false by default when Sentinels are
 ##! found.
 # gitlab_exporter['probe_sidekiq'] = true
+##! Service name used to register GitLab Exporter as a Consul service
+# gitlab_exporter['consul_service_name'] = 'gitlab-exporter'
+##! Semantic metadata used when registering GitLab Exporter as a Consul service
+# gitlab_exporter['consul_service_meta'] = {}
 
 # To completely disable prometheus, and all of it's exporters, set to false
 # prometheus_monitoring['enable'] = true
@@ -2076,7 +2223,7 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 #  'PATH' => "/opt/gitlab/bin:/opt/gitlab/embedded/bin:/bin:/usr/bin",
 #  'HOME' => '/var/opt/gitlab',
 #  'TZ' => ':/etc/localtime',
-#  'PYTHONPATH' => "/opt/gitlab/embedded/lib/python3.7/site-packages",
+#  'PYTHONPATH' => "/opt/gitlab/embedded/lib/python3.9/site-packages",
 #  'ICU_DATA' => "/opt/gitlab/embedded/share/icu/current",
 #  'SSL_CERT_DIR' => "/opt/gitlab/embedded/ssl/certs/",
 #  'WRAPPER_JSON_LOGGING' => true
@@ -2134,6 +2281,12 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 # gitaly['pack_objects_cache_enabled'] = true
 # gitaly['pack_objects_cache_dir'] = '/var/opt/gitlab/git-data/repositories/+gitaly/PackObjectsCache'
 # gitaly['pack_objects_cache_max_age'] = '5m'
+# gitaly['custom_hooks_dir'] = "/var/opt/gitlab/gitaly/custom_hooks"
+
+##! Service name used to register Gitaly as a Consul service
+# gitaly['consul_service_name'] = 'gitaly'
+##! Semantic metadata used when registering Gitaly as a Consul service
+# gitaly['consul_service_meta'] = {}
 
 ################################################################################
 ## Praefect
@@ -2211,6 +2364,11 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 # praefect['database_direct_sslcert'] = '/path/to/client-cert'
 # praefect['database_direct_sslkey'] = '/path/to/client-key'
 # praefect['database_direct_sslrootcert'] = '/path/to/rootcert'
+
+##! Service name used to register Praefect as a Consul service
+# praefect['consul_service_name'] = 'praefect'
+##! Semantic metadata used when registering Praefect as a Consul service
+# praefect['consul_service_meta'] = {}
 
 ################################################################################
 # Storage check
@@ -2404,6 +2562,35 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 ##!   the replicas will be reconfigured by the Sentinels anyway, but not with
 ##!   the exact parallel-syncs progression as specified.
 # sentinel['failover_timeout'] = 60000
+
+### Sentinel TLS settings
+###! To run Sentinel over TLS, specify values for the following settings
+# sentinel['tls_port'] = nil
+# sentinel['tls_cert_file'] = nil
+# sentinel['tls_key_file'] = nil
+
+###! Other TLS related optional settings
+# sentinel['tls_dh_params_file'] = nil
+# sentinel['tls_ca_cert_dir'] = '/opt/gitlab/embedded/ssl/certs/'
+# sentinel['tls_ca_cert_file'] = '/opt/gitlab/embedded/ssl/certs/cacert.pem'
+# sentinel['tls_auth_clients'] = 'optional'
+# sentinel['tls_replication'] = nil
+# sentinel['tls_cluster'] = nil
+# sentinel['tls_protocols'] = nil
+# sentinel['tls_ciphers'] = nil
+# sentinel['tls_ciphersuites'] = nil
+# sentinel['tls_prefer_server_ciphers'] = nil
+# sentinel['tls_session_caching'] = nil
+# sentinel['tls_session_cache_size'] = nil
+# sentinel['tls_session_cache_timeout'] = nil
+
+### Sentinel hostname support
+###! When enabled, Redis will leverage hostname support
+###! Generally this does not need to be changed as we determine this based on
+###! the provided input from `redis['announce_ip']`
+###! * This is configured to `true` when a fully qualified hostname is provided
+###! * This is configured to `false` when an IP address is provided
+# sentinel['use_hostnames'] = <calculated>
 
 ################################################################################
 ## Additional Database Settings (EE only)
@@ -2729,13 +2916,33 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 #     handler: 'failover_pgbouncer'
 #   }
 # }
+#
+# consul['custom_config_dir'] = '/path/to/service/configs/directory'
+#
+
+#### HTTP API ports
+# consul['http_port'] = nil
+# consul['https_port'] = nil
+
+#### Gossip encryption
+# consul['encryption_key'] = nil
+# consul['encryption_verify_incoming'] = nil
+# consul['encryption_verify_outgoing'] = nil
+
+#### TLS settings
+# consul['use_tls'] = false
+# consul['tls_ca_file'] = nil
+# consul['tls_certificate_file'] = nil
+# consul['tls_key_file'] = nil
+# consul['tls_verify_client'] = nil
+
 ################################################################################
-# Service desk email settings (EEP only)
+# Service desk email settings
 ################################################################################
 ### Service desk email
 ###! Allow users to create new service desk issues by sending an email to
 ###! service desk address.
-###! Docs: https://docs.gitlab.com/ee/administration/reply_by_email.html
+###! Docs: https://docs.gitlab.com/ee/user/project/service_desk.html
 # gitlab_rails['service_desk_email_enabled'] = false
 
 #### Service Desk Mailbox Settings (via `mail_room`)
@@ -2767,3 +2974,34 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 # gitlab_rails['service_desk_email_port'] = 993
 # gitlab_rails['service_desk_email_ssl'] = true
 # gitlab_rails['service_desk_email_start_tls'] = false
+
+#### Inbox options (for Microsoft Graph)
+# gitlab_rails['service_desk_email_inbox_method'] = 'microsoft_graph'
+# gitlab_rails['service_desk_email_inbox_options'] = {
+#    'tenant_id': 'YOUR-TENANT-ID',
+#    'client_id': 'YOUR-CLIENT-ID',
+#    'client_secret': 'YOUR-CLIENT-SECRET',
+#    'poll_interval': 60  # Optional
+# }
+
+################################################################################
+## Spamcheck (EE only)
+#################################################################################
+
+# spamcheck['enable'] = false
+# spamcheck['dir'] = '/var/opt/gitlab/spamcheck'
+# spamcheck['port'] = 8001
+# spamcheck['external_port'] = nil
+# spamcheck['monitoring_address'] = ':8003'
+# spamcheck['log_level'] = 'info'
+# spamcheck['log_format'] = 'json'
+# spamcheck['log_output'] = 'stdout'
+# spamcheck['monitor_mode'] = false
+# spamcheck['allowlist'] = {}
+# spamcheck['denylist'] = {}
+# spamcheck['log_directory'] = "/var/log/gitlab/spamcheck"
+# spamcheck['env_directory'] = "/opt/gitlab/etc/spamcheck/env"
+# spamcheck['env'] = {
+#   'SSL_CERT_DIR' => '/opt/gitlab/embedded/ssl/cers'
+# }
+# spamcheck['classifier']['log_directory'] = "/var/log/gitlab/spam-classifier"
