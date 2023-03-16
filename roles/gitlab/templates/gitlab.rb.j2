@@ -287,6 +287,14 @@ external_url '{{ gitlab_external_url }}'
 #    'poll_interval': 60  # Optional
 # }
 
+#### How incoming emails are delivered to Rails process. Accept either sidekiq
+#### or webhook. The default config is sidekiq.
+# gitlab_rails['incoming_email_delivery_method'] = "sidekiq"
+
+#### Token to authenticate webhook requests. The token must be exactly 32 bytes,
+#### encoded with base64
+# gitlab_rails['incoming_email_auth_token'] = nil
+
 ####! The format of mail_room crash logs
 # mailroom['exit_log_format'] = "plain"
 
@@ -607,7 +615,7 @@ EOS
 
 
 ### For setting up different data storing directory
-###! Docs: https://docs.gitlab.com/omnibus/settings/configuration.html#storing-git-data-in-an-alternative-directory
+###! Docs: https://docs.gitlab.com/omnibus/settings/configuration.html#store-git-data-in-an-alternative-directory
 ###! **If you want to use a single non-default directory to store git data use a
 ###!   path that doesn't contain symlinks.**
 # git_data_dirs({
@@ -640,6 +648,7 @@ EOS
 # gitlab_rails['extra_google_tag_manager_id'] = '_your_tracking_id'
 # gitlab_rails['extra_one_trust_id'] = '_your_one_trust_id'
 # gitlab_rails['extra_google_tag_manager_nonce_id'] = '_your_google_tag_manager_id'
+# gitlab_rails['extra_bizible'] = false
 # gitlab_rails['extra_matomo_url'] = '_your_matomo_url'
 # gitlab_rails['extra_matomo_site_id'] = '_your_matomo_site_id'
 # gitlab_rails['extra_matomo_disable_cookies'] = false
@@ -658,7 +667,6 @@ EOS
 #   'bantime' => 3600
 # }
 
-###! **We do not recommend changing these directories.**
 # gitlab_rails['dir'] = "/var/opt/gitlab/gitlab-rails"
 # gitlab_rails['log_directory'] = "/var/log/gitlab/gitlab-rails"
 
@@ -712,6 +720,7 @@ EOS
 # gitlab_rails['db_keepalives_count'] = nil
 # gitlab_rails['db_tcp_user_timeout'] = nil
 # gitlab_rails['db_application_name'] = nil
+# gitlab_rails['db_database_tasks'] = true
 
 
 ### GitLab Redis settings
@@ -962,8 +971,8 @@ EOS
 
 ################################################################################
 ## GitLab Puma
-##! Tweak puma settings. You should only use Unicorn or Puma, not both.
-##! Docs: https://docs.gitlab.com/omnibus/settings/puma.html
+##! Tweak puma settings.
+##! Docs: https://docs.gitlab.com/ee/administration/operations/puma.html
 ################################################################################
 
 # puma['enable'] = true
@@ -1436,6 +1445,7 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 # }
 # nginx['proxy_cache_path'] = 'proxy_cache keys_zone=gitlab:10m max_size=1g levels=1:2'
 # nginx['proxy_cache'] = 'gitlab'
+# nginx['proxy_custom_buffer_size'] = '4k'
 # nginx['http2_enabled'] = true
 # nginx['real_ip_trusted_addresses'] = []
 # nginx['real_ip_header'] = nil
@@ -1538,7 +1548,7 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 ##! Docs: https://docs.gitlab.com/omnibus/settings/configuration.html#disable-user-and-group-account-management
 ################################################################################
 
-# manage_accounts['enable'] = false
+# manage_accounts['enable'] = true
 
 ################################################################################
 ## Storage directories
@@ -1662,6 +1672,10 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 # gitlab_pages['auth_secret'] = nil # Generated if not present
 # gitlab_pages['auth_scope'] = nil # Defaults to api, can be changed to read_api to increase security
 
+##! GitLab Pages Server Shutdown Timeout
+##! Duration ("30s" for 30 seconds)
+# gitlab_pages['server_shutdown_timeout'] = "30s"
+
 ##! GitLab API HTTP client connection timeout
 # gitlab_pages['gitlab_client_http_timeout'] = "10s"
 
@@ -1703,6 +1717,17 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 # gitlab_pages['zip_cache_refresh'] = "30s"
 ##! The maximum amount of time it takes to open a zip archive from the file system or object storage.
 # gitlab_pages['zip_open_timeout'] = "30s"
+##! Zip HTTP Client timeout
+# gitlab_pages['zip_http_client_timeout'] = "30m"
+
+##! ReadTimeout is the maximum duration for reading the entire request, including the body. A zero or negative value means there will be no timeout.
+# gitlab_pages['server_read_timeout'] = "5s"
+##! ReadHeaderTimeout is the amount of time allowed to read request headers. A zero or negative value means there will be no timeout.
+# gitlab_pages['server_read_header_timeout'] = "1s"
+##! WriteTimeout is the maximum duration before timing out writes of the response. A zero or negative value means there will be no timeout.
+# gitlab_pages['server_write_timeout'] = "5m"
+##! KeepAlive specifies the keep-alive period for network connections accepted by this listener. If zero, keep-alives are enabled if supported by the protocol and operating system. If negative, keep-alives are disabled.
+# gitlab_pages['server_keep_alive'] = "15s"
 
 ##! Enable serving content from disk instead of Object Storage
 # gitlab_pages['enable_disk'] = nil
@@ -1712,14 +1737,25 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 ##! enable `FF_ENABLE_RATE_LIMITER=true` environment variable to
 ##! reject requests.
 
-##! Rate limit per source IP in number of requests per second, 0 means is disabled
+##! Rate limits as described in https://docs.gitlab.com/ee/administration/pages/#rate-limits
+
+##! Rate limit HTTP requests per second from a single IP, 0 means is disabled
 # gitlab_pages['rate_limit_source_ip'] = 50.0
-##! Rate limit per source IP maximum burst allowed per second
+##! Rate limit HTTP requests from a single IP, maximum burst allowed per second
 # gitlab_pages['rate_limit_source_ip_burst'] = 600
-##! Rate limit per domain name in number of requests per second, 0 means is disabled
+##! Rate limit HTTP requests per second to a single domain, 0 means is disabled
 # gitlab_pages['rate_limit_domain'] = 0
-##! Rate limit per domain name maximum burst allowed per second
+##! Rate limit HTTP requests to a single domain, maximum burst allowed per second
 # gitlab_pages['rate_limit_domain_burst'] = 10000
+
+##! Rate limit new TLS connections per second from a single IP, 0 means is disabled
+# gitlab_pages['rate_limit_tls_source_ip'] = 50.0
+##! Rate limit new TLS connections from a single IP, maximum burst allowed per second
+# gitlab_pages['rate_limit_tls_source_ip_burst'] = 600
+##!Rate limit new TLS connections per second from to a single domain, 0 means is disabled
+# gitlab_pages['rate_limit_tls_domain'] = 0
+##! Rate limit new TLS connections to a single domain, maximum burst allowed per second
+# gitlab_pages['rate_limit_tls_domain_burst'] = 10000
 
 # gitlab_pages['env_directory'] = "/opt/gitlab/etc/gitlab-pages/env"
 # gitlab_pages['env'] = {
@@ -1757,9 +1793,9 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 
 ##! Settings used by the GitLab application
 # gitlab_rails['gitlab_kas_enabled'] = true
-# gitlab_rails['gitlab_kas_external_url'] = ws://gitlab.example.com/-/kubernetes-agent/
-# gitlab_rails['gitlab_kas_internal_url'] = grpc://localhost:8153
-# gitlab_rails['gitlab_kas_external_k8s_proxy_url'] = https://gitlab.example.com/-/kubernetes-agent/
+# gitlab_rails['gitlab_kas_external_url'] = 'ws://gitlab.example.com/-/kubernetes-agent/'
+# gitlab_rails['gitlab_kas_internal_url'] = 'grpc://localhost:8153'
+# gitlab_rails['gitlab_kas_external_k8s_proxy_url'] = 'https://gitlab.example.com/-/kubernetes-agent/'
 
 ##! Enable GitLab KAS
 # gitlab_kas['enable'] = true
@@ -1798,6 +1834,9 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 
 ##! Metrics configuration for GitLab KAS
 # gitlab_kas['metrics_usage_reporting_period'] = 60
+
+##! Log configuration for GitLab KAS
+# gitlab_kas['log_level'] = 'info'
 
 ##! Environment variables for GitLab KAS
 # gitlab_kas['env'] = {
@@ -1988,7 +2027,7 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 ###! **Only needed if Prometheus and Rails are not on the same server.**
 ### For example, in a multi-node architecture, Prometheus will be installed on the monitoring node, while Rails will be on the Rails node.
 ### https://docs.gitlab.com/ee/administration/monitoring/prometheus/index.html#using-an-external-prometheus-server
-### This value should be the address at which Prometheus is available to GitLab Rails(Puma/Unicorn, Sidekiq) node.
+### This value should be the address at which Prometheus is available to a GitLab Rails(Puma, Sidekiq) node.
 ################################################################################
 # gitlab_rails['prometheus_address'] = 'your.prom:9090'
 
@@ -2229,10 +2268,7 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 #  'WRAPPER_JSON_LOGGING' => true
 # }
 
-##! internal_socket_dir is the directory that will contain internal gitaly sockets,
-##! separate from socket_path which is the socket that external clients listen on
-
-# gitaly['internal_socket_dir'] = "/var/opt/gitlab/gitaly"
+# gitaly['runtime_dir'] = "/var/opt/gitlab/gitaly/run"
 # gitaly['socket_path'] = "/var/opt/gitlab/gitaly/gitaly.socket"
 # gitaly['listen_addr'] = "localhost:8075"
 # gitaly['tls_listen_addr'] = "localhost:9075"
@@ -2250,6 +2286,7 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 # gitaly['graceful_restart_timeout'] = '1m' # Grace time for a gitaly process to finish ongoing requests
 # gitaly['git_catfile_cache_size'] = 100 # Number of 'git cat-file' processes kept around for re-use
 # gitaly['git_bin_path'] = "/opt/gitlab/embedded/bin/git" # A custom path for the 'git' executable
+# gitaly['use_bundled_git'] = true # Whether to use bundled Git.
 # gitaly['open_files_ulimit'] = 15000 # Maximum number of open files allowed for the gitaly process
 # gitaly['ruby_max_rss'] = 300000000 # RSS threshold in bytes for triggering a gitaly-ruby restart
 # gitaly['ruby_graceful_restart_timeout'] = '10m' # Grace time for a gitaly-ruby process to finish ongoing requests
@@ -2263,6 +2300,17 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 #   }, {
 #     'rpc' => "/gitaly.SSHService/SSHUploadPack",
 #     'max_per_repo' => 5
+#   }
+# ]
+# gitaly['rate_limiting'] = [
+#   {
+#     'rpc' => "/gitaly.SmartHTTPService/PostReceivePack",
+#     'interval' => '1m',
+#     'burst' => 10
+#   }, {
+#     'rpc' => "/gitaly.SSHService/SSHUploadPack",
+#     'interval' => '1m',
+#     'burst' => 5
 #   }
 # ]
 #
@@ -2312,6 +2360,7 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 # praefect['key_path'] = "/var/opt/gitlab/prafect/key.pem"
 # praefect['prometheus_listen_addr'] = "localhost:9652"
 # praefect['prometheus_grpc_latency_buckets'] = "[0.001, 0.005, 0.025, 0.1, 0.5, 1.0, 10.0, 30.0, 60.0, 300.0, 1500.0]"
+# praefect['separate_database_metrics'] = true
 # praefect['logging_level'] = "warn"
 # praefect['logging_format'] = "json"
 # praefect['virtual_storages'] = {
@@ -2634,6 +2683,7 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 # geo_secondary['db_sslrootcert'] = nil
 # geo_secondary['db_sslca'] = nil
 # geo_secondary['db_prepared_statements'] = false
+# geo_secondary['db_database_tasks'] = true
 
 ################################################################################
 ## GitLab Geo Secondary Tracking Database (EE only)
@@ -2646,6 +2696,13 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 # geo_postgresql['pgbouncer_user_password'] = nil
 ##! `SQL_USER_PASSWORD_HASH` can be generated using the command `gitlab-ctl pg-password-md5 gitlab`
 # geo_postgresql['sql_user_password'] = 'SQL_USER_PASSWORD_HASH'
+# geo_postgresql['log_directory'] = '/var/log/gitlab/geo-postgresql'
+
+################################################################################
+## GitLab Geo Log Cursor Daemon (EE only)
+################################################################################
+
+# geo_logcursor['log_directory'] = '/var/log/gitlab/geo-logcursor'
 
 ################################################################################
 ## Unleash
@@ -2983,6 +3040,14 @@ nginx['ssl_certificate_key'] = "/etc/gitlab/external_keypair.pem"
 #    'client_secret': 'YOUR-CLIENT-SECRET',
 #    'poll_interval': 60  # Optional
 # }
+
+#### How service desk emails are delivered to Rails process. Accept either
+#### sidekiq or webhook. The default config is sidekiq.
+# gitlab_rails['service_desk_email_delivery_method'] = "sidekiq"
+
+#### Token to authenticate webhook requests. The token must be exactly 32 bytes,
+#### encoded with base64
+# gitlab_rails['service_desk_email_auth_token'] = nil
 
 ################################################################################
 ## Spamcheck (EE only)
