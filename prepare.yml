@@ -10,5 +10,5 @@
     register: check_python
 
   - name: Install Python
-    raw: apt install -y python
+    raw: apt install -y python3
     when: not ansible_check_mode and check_python.rc != 0
